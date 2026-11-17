@@ -1,6 +1,6 @@
 # Software Requirements Specification: playwright-invisible-mcp
 
-This specification defines the functional requirements, category taxonomy, and automated test traceability matrix for **`playwright-invisible-mcp`** (`stealth_wrapper` extension layer, baseline version `0.73.1` <!-- x-release-please-version -->).
+This specification defines the functional requirements, category taxonomy, and automated test traceability matrix for **`playwright-invisible-mcp`** (`stealth_wrapper` extension layer, baseline version `0.74.0` <!-- x-release-please-version -->).
 
 ---
 

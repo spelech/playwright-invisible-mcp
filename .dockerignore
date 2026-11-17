@@ -1,0 +1,17 @@
+.git
+.github
+.gitignore
+.env
+.env.*
+.pytest_cache
+.ruff_cache
+.venv
+__pycache__
+coverage
+data
+tests
+docs
+articles
+scripts
+*.md
+!README.md

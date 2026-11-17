@@ -185,6 +185,14 @@ delete; nothing is retained anywhere else. Questions go to the
 distributed before 2 September 2026 was released under AGPL-3.0 and stays under
 it.
 
+## Docker & Streamable HTTP Wrapper
+
+This fork layers a modular Streamable HTTP server (`src/stealth_wrapper/`) and native `linux/amd64` Docker image on top of upstream:
+
+- [Wrapper & Multi-Tab / Context Forking Guide](WRAPPER.md)
+- [System Architecture](ARCHITECTURE.md)
+- [Requirements & Test Traceability Matrix](REQUIREMENTS.md)
+
 <!-- The Official MCP Registry verifies ownership of a PyPI package by finding
      this token in the published description, which is this file. It must match
      the `name` in server.json exactly. -->

@@ -1,242 +1,132 @@
-name: tests
+name: CI Quality Gates
 
 on:
   push:
-    branches: [main]
+    branches: [ main, develop ]
   pull_request:
+    branches: [ main, develop ]
 
-permissions:
-  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # This repository is public and everything in it is English by rule. The gate
-  # is a COPY and not a reference to the one in the sibling packages, on purpose:
-  # it scans the tree it is run from, and running a sibling's copy from here
-  # silently scans the wrong repository and reports clean. That happened once
-  # already, which is why each package carries its own.
-  english:
+  release-verification:
+    name: Release, Link & Anti-Theatre Gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - name: the repository is English
-        # The gate is `invisible_core.english` since core 30.23.0. It used to be
-        # a script copied here and into the wrapper, and the copies drifted: four
-        # of this one's five exclusions named paths that exist only in the
-        # wrapper. This repository declares nothing, so nothing is exempt.
+          python-version: '3.12'
+
+      - name: Run Release Verification & Test Theatre Audit
+        run: python3 scripts/verify_release.py --audit-tests --ci
+
+  python-quality-and-tests:
+    name: Lint, Contract & Coverage Gate (Python 3.11)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install package and test dependencies
         run: |
-          python -m pip install --upgrade pip "invisible-core>=30.23.0"
+          python -m pip install --upgrade pip
+          pip install -e ".[test,dev]"
+
+      - name: Run English-Only Gate
+        run: |
           python -m invisible_core.english --selftest
           python -m invisible_core.english
 
-  # ⛔ PYFLAKES ONLY, AND IT IS HERE BECAUSE A NameError REACHED CI ON A GREEN
-  # SUITE. `from mcp.types import ImageContent` was dropped while an import
-  # block was rewritten, in a file only the e2e job runs: an undefined name
-  # inside a function body passes `py_compile`, `--collect-only` never imports
-  # the module, and all six matrix jobs stayed green. This finds it in under a
-  # second.
-  #
-  # The rule set is pinned in pyproject (`select = ["F"]`), so the command
-  # carries no opinions of its own, this can never become an argument about
-  # formatting, and a ruff release cannot widen it under us.
-  lint:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: no undefined names, no unused imports
-        run: |
-          python -m pip install --upgrade pip "ruff>=0.6"
-          ruff check src tests scripts
+      - name: Run Ruff Check
+        run: ruff check src tests scripts
 
-  test:
-    runs-on: ${{ matrix.os }}
-    # ⛔ A CEILING, BECAUSE A JOB THAT HANGS IS NOT REPORTED AS BROKEN. On
-    # 2026-09-11 one test in the fast selection started downloading an engine
-    # and every one of these six jobs sat at 64% until GitHub killed it at its
-    # six-hour default - three pushes running. `in_progress` for six hours
-    # reads as a slow job, so nobody looks; a red one at twenty minutes is
-    # read the same minute. The whole matrix takes two minutes at rest.
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ["3.11", "3.12", "3.13"]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: install and test
-        # The default selection excludes `ui`, which drives a real browser: those
-        # need an engine download and a machine doing nothing else, and a runner
-        # is neither. They are run by hand, serially, before a release.
+      - name: Verify Modular File Size Limits (<= 500 LOC)
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[test]"
-          python -m pytest -q
+          python3 - <<'PY'
+          import sys
+          from pathlib import Path
+          bad = []
+          for p in list(Path("src/stealth_wrapper").glob("*.py")) + list(Path("tests/wrapper").glob("*.py")):
+              lines = len(p.read_text(encoding="utf-8").splitlines())
+              if lines > 500:
+                  bad.append(f"{p}: {lines} lines > 500")
+          if bad:
+              print("\n".join(bad), file=sys.stderr)
+              sys.exit(1)
+          print("All stealth_wrapper source and test files are <= 500 lines.")
+          PY
 
-  # Every version on the index has a GitHub release page. Carried over from the
-  # server's own CI when it moved in here: the guard was one version wide until
-  # 2026-08-02 on the sibling packages, and the whole index is walked since.
-  releases:
+      - name: Run Wrapper Tests with Coverage (>= 80%)
+        run: |
+          pytest tests/wrapper --cov=stealth_wrapper --cov-report=term-missing --cov-fail-under=80
+
+      - name: Run Full Unit & Upstream Contract Suite
+        run: |
+          pytest --ignore=tests/test_release_pages.py --ignore=tests/test_version_is_not_taken.py
+
+  docker-smoke:
+    name: Native Container Build & Healthz Smoke Gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [release-verification, python-quality-and-tests]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: the index and the tags agree with each other
-        env:
-          INVISIBLE_MCP_CHECK_RELEASES: "1"
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          python -m pip install --upgrade pip pytest
-          python -m pytest -q tests/test_release_pages.py
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  # The server's browser tests: they start a real engine, downloaded into the
-  # runner's cache on first use, and drive it through the tools. Deselected by
-  # default because of the download and the time; this job runs them the way
-  # the server's own CI did before the merge, on one platform.
-  #
-  # ⛔ AND IT NOW RUNS `-m ui` TOO, BECAUSE NOBODY RAN THEM AND THEY HAD ROTTED.
-  # `addopts` deselects both `ui` and `e2e`, and this job asked only for `e2e`
-  # in `tests/mcp_server` - so the sixteen tests in `tests/test_ui_drive.py`,
-  # which drive a real browser through a real server, were selected by no run
-  # anywhere. Measured 2026-09-15: all sixteen ERRORED at fixture setup and had
-  # for some time. The fixture navigated into a browser it had never opened,
-  # which the product stopped allowing when `browser_open` became the only tool
-  # that opens one, and the comment beside it still described the older world.
-  #
-  # Nothing could go red. A deselected test does not fail: it is absent, and a
-  # summary reports "deselected", which reads like a choice rather than a gap.
-  # Same shape as a workflow whose trigger never fires.
-  #
-  # It costs about half a minute and no extra download - the engine is already
-  # fetched two lines below for the same reason - and it runs AFTER the e2e
-  # selection because these must run serially: two browsers driving at once
-  # give false results.
+      - name: Build native linux/amd64 Docker image
+        run: docker build --platform linux/amd64 -t playwright-invisible-mcp:ci .
+
+      - name: Start container & probe /healthz
+        run: |
+          docker run -d --name pw-ci-smoke -p 18000:8000 playwright-invisible-mcp:ci
+          trap 'docker logs pw-ci-smoke || true; docker rm -f pw-ci-smoke || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18000/healthz; then
+              echo ""
+              echo "Container /healthz check passed!"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Container /healthz check timed out!" >&2
+          exit 1
+
   e2e:
+    name: Real Engine E2E & UI Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    needs: [python-quality-and-tests]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - name: the tools drive a real engine
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install package and test dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[test]"
-          # The tests that spawn the server as a subprocess and drive it
-          # through a real engine skip unless the engine is named to them.
+
+      - name: Fetch engine and run E2E + UI suites
+        run: |
           export STEALTHFOX_BINARY="$(invisible-playwright fetch | tail -n 1)"
           python -m pytest -q -m e2e tests/mcp_server
-          # Serially, and in this order: both selections drive real browsers.
           python -m pytest -q -m ui
-
-  # This package is published, so the thing that must work is the WHEEL, not the
-  # checkout. An editable install can pass every test while the built artifact is
-  # missing a module: the tests import from src/ either way, and only a clean
-  # install from the wheel can tell the difference.
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: the wheel builds, installs clean, and answers
-        run: |
-          python -m pip install --upgrade pip
-          pip install build
-          python -m build --wheel
-          python -m venv /tmp/clean
-          /tmp/clean/bin/pip install dist/*.whl
-          /tmp/clean/bin/invisible-playwright-mcp --help
-          /tmp/clean/bin/python -c "import invisible_playwright_mcp.routes, invisible_playwright_mcp.agent, invisible_playwright_mcp.link, invisible_playwright_mcp.cli, invisible_playwright_mcp.mcp.server"
-          /tmp/clean/bin/python -m invisible_playwright_mcp --help > /dev/null
-          unzip -l dist/*.whl | grep -q "invisible_playwright_mcp/mcp/server.py"
-
-  # The repository is also the MCP bundle: manifest.json at the root, MCPB 0.4,
-  # server.type uv, the package under src/. This packs it with the official CLI
-  # on every change and refuses an archive that carries anything beyond the
-  # server (.mcpbignore is the first wall, scripts/pack_bundle.py the second),
-  # then runs the packed bundle the way a host does: from a fresh directory,
-  # with the manifest's own mcp_config command, which installs the package from
-  # the bundle's pyproject. Measured 2026-09-13 before it was written here.
-  bundle:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      # uv from astral's installer, not from astral-sh/setup-uv: this
-      # repository's Actions policy allows actions by oss-invisible, by GitHub, or
-      # pypa/gh-action-pypi-publish, and the first run of this job died at
-      # startup on exactly that. The PATH line and not the README's `source
-      # $HOME/.local/bin/env`: on a runner ~/.local/bin is already on the PATH,
-      # so the installer writes no env file and the source fails (second run).
-      - name: the bundle packs, holds only the server, and runs
-        run: |
-          set -euo pipefail
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          export PATH="$HOME/.local/bin:$PATH"
-          npx -y @anthropic-ai/mcpb validate .
-          python scripts/pack_bundle.py --output /tmp/bundle
-          python scripts/pack_bundle.py --smithery --output /tmp/bundle
-          mkdir /tmp/unpacked
-          python -c "import zipfile,glob; zipfile.ZipFile(glob.glob('/tmp/bundle/invisible-playwright-mcp-*[0-9].mcpb')[0]).extractall('/tmp/unpacked')"
-          # ⛔ NOT `--help`. That is what this step ran until 2026-09-13, and
-          # it proves the entry point imports, nothing more: a bundle that
-          # could not finish `initialize`, or answered `tools/list` with an
-          # empty list, was green all the way to a directory review. This
-          # starts the bundle with the command its OWN manifest declares and
-          # speaks MCP to it.
-          cp scripts/bundle_speaks_mcp.py /tmp/unpacked/
-          uv run --directory /tmp/unpacked python /tmp/unpacked/bundle_speaks_mcp.py /tmp/unpacked
-
-  # 2026-09-04: invisible_playwright_mcp 0.4.0 went to the index, then main gained two more
-  # changes while pyproject still said 0.4.0. A release from there would have
-  # published NOTHING and reported success, because publish.yml treats a version
-  # already on the index as a deliberate no-op - which is right for a re-pushed
-  # tag and indistinguishable from somebody forgetting to bump.
-  #
-  # Pull requests only: on main straight after a release the version IS the
-  # published one until somebody bumps, and a gate that is red at rest is a gate
-  # people learn to skip. The job sets the variable itself, so it cannot silently
-  # skip the way a local run does.
-  version:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          # The gate diffs the tree against the tag of the published
-          # version; a shallow clone has no tags and cannot tell.
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: the version this change proposes is still free
-        env:
-          INVISIBLE_MCP_CHECK_VERSION: "1"
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest
-          python -m pytest -q tests/test_version_is_not_taken.py

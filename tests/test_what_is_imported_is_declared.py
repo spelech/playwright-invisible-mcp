@@ -53,7 +53,11 @@ def _ours() -> set:
     modules. A list of local names is a second declaration of what the directory
     already says, and it goes stale the next time somebody adds a helper.
     """
-    out = {"invisible_playwright_mcp"}
+    out = {
+        p.name
+        for p in (ROOT / "src").iterdir()
+        if p.is_dir() and not p.name.startswith((".", "__"))
+    }
     for folder in (ROOT / "tests", ROOT / "scripts"):
         if folder.is_dir():
             out |= {p.stem for p in folder.rglob("*.py")}

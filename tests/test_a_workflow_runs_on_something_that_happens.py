@@ -86,26 +86,15 @@ def test_no_workflow_waits_only_for_an_event_this_repository_cannot_raise():
         % (len(stranded), "\n  ".join(stranded)))
 
 
-def test_the_wiki_follows_the_documents_it_mirrors():
-    """The same defect one step along: a `paths:` filter that matches nothing
-    is a trigger that never fires, and it reads exactly like one that works.
-
-    Known-bad is renaming `docs/` without touching this list, or narrowing the
-    filter to a directory that is not where the pages are."""
-    text = _workflows()["publish-wiki.yml"]
-    assert "push" in _triggers(text), (
-        "the wiki is built from the docs and nothing pushes it: it went stale "
-        "through eight releases the last time this was true")
-    listed = re.findall(r'^\s+- "([^"]+)"', text, re.M)
-    assert any(p.startswith("docs/") for p in listed), (
-        "the push filter does not name docs/: %s" % listed)
-    for pattern in listed:
-        head = pattern.split("*")[0].rstrip("/")
-        if not head:
-            continue
-        assert (ROOT / head).exists(), (
-            "the filter names %r, which is not in the tree - so it can never "
-            "match and the trigger is decorative" % pattern)
+def test_the_release_pipeline_invokes_container_publishing():
+    """In the container fork, `release-please.yml` replaces upstream wiki/PyPI
+    publishing and must automatically invoke `docker-publish.yml` via `workflow_call`."""
+    workflows = _workflows()
+    rp = workflows["release-please.yml"]
+    dp = workflows["docker-publish.yml"]
+    assert "push" in _triggers(rp)
+    assert "workflow_call" in _triggers(dp)
+    assert "./.github/workflows/docker-publish.yml" in rp
 
 
 def test_every_selection_the_suite_hides_is_one_some_workflow_asks_for():

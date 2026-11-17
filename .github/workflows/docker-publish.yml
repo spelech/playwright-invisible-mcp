@@ -46,7 +46,8 @@ jobs:
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
           TAG="${{ inputs.tag_name }}"
           if [[ -n "$TAG" ]]; then
-            VER="${TAG#v}"
+            VER="${TAG##*-v}"
+            VER="${VER#v}"
             MAJOR_MINOR="${VER%.*}"
             echo "extra_tags=${IMAGE}:${VER},${IMAGE}:${MAJOR_MINOR},${IMAGE}:latest" >> "$GITHUB_OUTPUT"
           else

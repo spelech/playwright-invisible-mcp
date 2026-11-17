@@ -69,6 +69,7 @@ sequenceDiagram
 | [`page_download_service.py`](src/stealth_wrapper/page_download_service.py) | `HttpOnly` cookie inspection and authenticated browser file downloads. | Enforces download directory containment and flags anti-bot stealth HTML comment blocks as HTTP 403. |
 | [`tab_routing_service.py`](src/stealth_wrapper/tab_routing_service.py) | Monotonic per-session tab IDs, pinned active tabs, and async `ContextVar` tab scopes. | Keeps closed indices tombstone-stable so active tab IDs never shift unexpectedly. |
 | [`session_fork_service.py`](src/stealth_wrapper/session_fork_service.py) & [`forked_session.py`](src/stealth_wrapper/forked_session.py) | `storage_state` context cloning, shared host browser management, promote/discard workflows. | Each fork uses an independent `asyncio.Lock` with zero contention on `main`. |
+| [`tool_trace_recorder.py`](src/stealth_wrapper/tool_trace_recorder.py) | Per-call JSONL telemetry, 2/3-step sequence n-gram aggregation, and streamlining opportunity detection. | Redacts sensitive arguments, bounds ring-buffer memory, and exposes `browser_trace_summary` + `GET /traces`. |
 
 ---
 

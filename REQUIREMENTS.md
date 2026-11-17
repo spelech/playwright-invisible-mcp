@@ -35,6 +35,7 @@ Requirement identifiers use `<CATEGORY>-<NN>` format (`GUARD`, `MCP`, `SEC`, `TR
 | **`MCP-07`** | `MCP` | `PositiveFeature` | **Bounded `max_chars` & `offset` Read Pagination** | [`test_browser_action_service.py::test_bounded_read_text_and_read_html_pagination`](tests/wrapper/test_browser_action_service.py) |
 | **`MCP-08`** | `MCP` | `PositiveFeature` | **Multi-Tab Pinning & `ContextVar` Scoping** | [`test_tab_and_fork_services.py::test_tab_routing_pinned_and_scoped_navigation`](tests/wrapper/test_tab_and_fork_services.py) |
 | **`MCP-09`** | `MCP` | `PositiveFeature` | **Parallel `storage_state` Context Forks** | [`test_tab_and_fork_services.py::test_fork_session_parallel_isolation_and_checkpoint_rollback`](tests/wrapper/test_tab_and_fork_services.py) |
+| **`MCP-10`** | `MCP` | `PositiveFeature` | **Tool Call Tracing & Streamlining Analytics** | [`test_tool_trace_recorder.py::test_tool_trace_recorder_patterns_streamlining_and_endpoints`](tests/wrapper/test_tool_trace_recorder.py) |
 | **`SEC-01`** | `SEC` | `FailClosedGuardrail` | **Read-Only JavaScript Evaluation Guardrail** | [`test_browser_action_service.py::test_evaluate_enforces_stealth_guardrails_and_runs_expressions`](tests/wrapper/test_browser_action_service.py) |
 | **`SEC-02`** | `SEC` | `FailClosedGuardrail` | **Reject Auto-Launch for Unknown Fork IDs** | [`test_tab_and_fork_services.py::test_lifecycle_guard_skips_auto_open_for_unknown_forks`](tests/wrapper/test_tab_and_fork_services.py) |
 
@@ -58,9 +59,9 @@ Requirement identifiers use `<CATEGORY>-<NN>` format (`GUARD`, `MCP`, `SEC`, `TR
 - **Category**: `TRANS` (`PositiveFeature`)
 - **Description**: Map `networkidle` to `load` and wait within configured millisecond bounds until resource timelines and DOM fingerprints stabilize on navigations and URL-changing clicks.
 
-### `MCP-01` through `MCP-09`: Enhanced FastMCP Surface & Isolation
+### `MCP-01` through `MCP-10`: Enhanced FastMCP Surface, Isolation & Telemetry
 - **Category**: `MCP` (`PositiveFeature`)
-- **Description**: Expose scoped snapshots, directional scrolling, bounded waits, `HttpOnly` cookie inspection, native/authenticated downloads, clipboard paste, paginated reads, pinned multi-tab routing, isolated context forks, and FastMCP/ASGI `/healthz` + `/health` endpoints.
+- **Description**: Expose scoped snapshots, directional scrolling, bounded waits, `HttpOnly` cookie inspection, native/authenticated downloads, clipboard paste, paginated reads, pinned multi-tab routing, isolated context forks, per-call JSONL telemetry with n-gram streamlining recommendations (`browser_trace_summary` + `/traces`), and FastMCP/ASGI `/healthz` + `/health` endpoints.
 
 ### `SEC-01` & `SEC-02`: Stealth Evaluation & Fork Guardrails
 - **Category**: `SEC` (`FailClosedGuardrail`)

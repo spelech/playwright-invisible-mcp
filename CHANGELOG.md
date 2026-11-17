@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 * layer stealth_wrapper, Toolbelt standards, and release-please Docker CI ([df7a1c8](https://github.com/spelech/playwright-invisible-mcp/commit/df7a1c8f9af7a4f6f5c9756cbad2894f60245757))
+* **telemetry:** add tool call tracing and multi-step streamlining analytics ([#3](https://github.com/spelech/playwright-invisible-mcp/issues/3)) ([dfd6b07](https://github.com/spelech/playwright-invisible-mcp/commit/dfd6b072761cde5b629558a37b76736bfa9bfaf8))
 
 
 ### Bug Fixes

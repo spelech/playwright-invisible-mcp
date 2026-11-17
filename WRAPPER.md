@@ -10,6 +10,7 @@
 - **Multi-Tab Pinned Routing (`tab_id`)**: [`TabRoutingService`](src/stealth_wrapper/tab_routing_service.py) preserves pinned active tabs and isolates concurrent async tool calls with `contextvars` overrides across page tools.
 - **Fast Context Forking (`storage_state`)**: [`SessionForkService`](src/stealth_wrapper/session_fork_service.py) and [`ForkedStealthSession`](src/stealth_wrapper/forked_session.py) clone cookies and `localStorage` into isolated `BrowserContext` sessions for parallel or speculative browsing with promote/discard lifecycle controls.
 - **Trusted Clipboard Paste, Bounded Reads & Authenticated Downloads**: [`BrowserActionService`](src/stealth_wrapper/browser_action_service.py) and [`PageDownloadService`](src/stealth_wrapper/page_download_service.py) add trusted `Control+v` clipboard pasting, scoped snapshots (`selector`, `viewport_only`, `max_elements`), `offset`/`max_chars` pagination, directional scrolling, `HttpOnly` cookie inspection, and authenticated browser downloads (including native CAD2 `expect_download` + Akamai comment block detection).
+- **Tool Call Tracing & Streamlining Analytics**: [`ToolTraceRecorder`](src/stealth_wrapper/tool_trace_recorder.py) records per-call execution timing, inter-tool LLM gaps, URL changes, and redacted arguments to `/data/traces/tool_calls.jsonl`, and exposes 2/3-step sequence n-grams plus automatic streamlining suggestions via `browser_trace_summary` and `GET /traces`.
 
 ## Running via Docker (`ghcr.io/spelech/playwright-invisible-mcp`)
 

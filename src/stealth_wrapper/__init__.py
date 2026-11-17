@@ -23,6 +23,14 @@ from .server import WrapperRuntime, build_wrapper_runtime, main
 from .forked_session import ForkedStealthSession
 from .session_fork_service import SessionForkService
 from .tab_routing_service import TabRoutingService
+from .tool_trace_recorder import (
+    SequencePatternSummary,
+    StreamliningOpportunity,
+    ToolStatsSummary,
+    ToolTraceEvent,
+    ToolTraceRecorder,
+    TraceSummaryResponse,
+)
 
 __all__ = [
     "BrowserActionService",
@@ -40,11 +48,17 @@ __all__ = [
     "PasteResultResponse",
     "ProfileLifecycleGuard",
     "ScrollResultResponse",
+    "SequencePatternSummary",
     "SessionForkService",
+    "StreamliningOpportunity",
     "TabActionResponse",
     "TabInfo",
     "TabListResponse",
     "TabRoutingService",
+    "ToolStatsSummary",
+    "ToolTraceEvent",
+    "ToolTraceRecorder",
+    "TraceSummaryResponse",
     "WrapperRuntime",
     "build_wrapper_runtime",
     "main",

@@ -14,7 +14,7 @@ from stealth_wrapper.server import build_wrapper_runtime
 
 
 @pytest.mark.requirement(
-    "MCP-05", "FastMCP server_wrapper registers all 29 tools and dispatches through domain services"
+    "MCP-05", "FastMCP server_wrapper registers all 30 tools and dispatches through domain services"
 )
 async def test_server_wrapper_tool_registration_and_dispatch(
     tmp_path: Path,
@@ -22,6 +22,7 @@ async def test_server_wrapper_tool_registration_and_dispatch(
 ) -> None:
     monkeypatch.setenv("STEALTHFOX_PROFILE_DIR", str(tmp_path / "profile"))
     monkeypatch.setenv("STEALTHFOX_DOWNLOADS_DIR", str(tmp_path / "downloads"))
+    monkeypatch.setenv("STEALTHFOX_TRACE_FILE", str(tmp_path / "traces" / "tool_calls.jsonl"))
 
     from invisible_playwright_mcp.mcp import server as upstream_server
 
@@ -69,6 +70,7 @@ async def test_server_wrapper_tool_registration_and_dispatch(
             "browser_fork_session",
             "browser_promote_fork",
             "browser_discard_fork",
+            "browser_trace_summary",
         }
         assert expected_tools.issubset(set(tool_map))
 

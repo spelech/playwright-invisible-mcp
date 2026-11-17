@@ -19,6 +19,7 @@ from .page_download_service import PageDownloadService
 from .profile_lifecycle_guard import ProfileLifecycleGuard
 from .session_fork_service import SessionForkService
 from .tool_adapter import register_wrapper_tools
+from .tool_trace_recorder import ToolTraceRecorder
 
 
 @dataclass
@@ -30,9 +31,11 @@ class WrapperRuntime:
     download_service: PageDownloadService
     action_service: BrowserActionService
     fork_service: SessionForkService
+    trace_recorder: ToolTraceRecorder
     tools: dict[str, Callable[..., Any]]
     app: Any
     healthz: Callable[..., Any]
+    traces: Callable[..., Any]
     _mcp: Any
     _orig_tools: dict[str, Any]
     _orig_stateless_http: Any
@@ -64,8 +67,24 @@ def build_wrapper_runtime(
     host_downloads_dir = os.environ.get("STEALTHFOX_HOST_DOWNLOADS_DIR") or str(downloads_dir)
     spa_settle_ms = int(os.environ.get("STEALTHFOX_SPA_SETTLE_MS", "2500"))
     spa_action_settle_ms = int(os.environ.get("STEALTHFOX_SPA_ACTION_SETTLE_MS", "2500"))
+    trace_enabled = os.environ.get("STEALTHFOX_TRACE_ENABLED", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+    )
+    trace_file_raw = os.environ.get("STEALTHFOX_TRACE_FILE", "/data/traces/tool_calls.jsonl").strip()
+    trace_file = Path(trace_file_raw) if trace_file_raw else None
+    trace_max_events = int(os.environ.get("STEALTHFOX_TRACE_MAX_EVENTS", "500"))
+    trace_log = os.environ.get("STEALTHFOX_TRACE_LOG", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+    )
 
-    orig_tools = dict(mcp._tool_manager._tools)
+    orig_tools = {
+        name: tool_obj.model_copy(deep=True) if hasattr(tool_obj, "model_copy") else tool_obj
+        for name, tool_obj in mcp._tool_manager._tools.items()
+    }
     orig_stateless_http = mcp.settings.stateless_http
 
     lifecycle_guard = ProfileLifecycleGuard(work, default_profile_dir=default_profile_dir)
@@ -92,12 +111,21 @@ def build_wrapper_runtime(
     fork_service = SessionForkService(work, actions_module=_actions)
     fork_service.install()
 
+    trace_recorder = ToolTraceRecorder(
+        work,
+        enabled=trace_enabled,
+        trace_file=trace_file,
+        max_events=trace_max_events,
+        log_events=trace_log,
+    )
+
     tools = register_wrapper_tools(
         mcp=mcp,
         work=work,
         actions=_actions,
         action_service=action_service,
         fork_service=fork_service,
+        trace_recorder=trace_recorder,
     )
 
     if hasattr(mcp.settings, "transport_security") and mcp.settings.transport_security:
@@ -115,11 +143,26 @@ def build_wrapper_runtime(
                 "service": "invisible-playwright-mcp",
                 "version": getattr(upstream_server, "__version__", "0.73.1"),
                 "headless": os.environ.get("STEALTHFOX_HEADLESS", "1"),
+                "traceEnabled": trace_recorder.enabled,
+                "tracedCalls": trace_recorder._total_calls,
             }
         )
 
+    async def traces(request: Any) -> JSONResponse:
+        params = getattr(request, "query_params", {}) or {}
+        limit_recent = int(params.get("limit", "25"))
+        min_count = int(params.get("min_count", "2"))
+        reset = str(params.get("reset", "0")).strip().lower() in ("1", "true", "yes")
+        summary = trace_recorder.summarize(
+            limit_recent=limit_recent,
+            min_sequence_count=min_count,
+            reset=reset,
+        )
+        return JSONResponse(summary.model_dump())
+
     app.add_route("/healthz", healthz)
     app.add_route("/health", healthz)
+    app.add_route("/traces", traces)
 
     return WrapperRuntime(
         lifecycle_guard=lifecycle_guard,
@@ -127,9 +170,11 @@ def build_wrapper_runtime(
         download_service=download_service,
         action_service=action_service,
         fork_service=fork_service,
+        trace_recorder=trace_recorder,
         tools=tools,
         app=app,
         healthz=healthz,
+        traces=traces,
         _mcp=mcp,
         _orig_tools=orig_tools,
         _orig_stateless_http=orig_stateless_http,

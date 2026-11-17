@@ -121,6 +121,7 @@ def register_wrapper_tools(
     actions: Any,
     action_service: Any,
     fork_service: Any,
+    trace_recorder: Optional[Any] = None,
 ) -> dict[str, Callable[..., Any]]:
     """Adapt upstream FastMCP tools and register all wrapper-enhanced and new browser tools."""
     for session_tool in SESSION_ADAPTED_TOOLS:
@@ -406,7 +407,24 @@ def register_wrapper_tools(
                 role=browser,
             )
 
-    return {
+    @mcp.tool(
+        annotations=_says("Inspect tool trace analytics and streamlining opportunities", read_only=True)
+    )
+    async def browser_trace_summary(
+        limit_recent: int = 25,
+        min_sequence_count: int = 2,
+        reset: bool = False,
+    ) -> str:
+        """Return tool call execution statistics, 2/3-step sequences, and streamlining suggestions."""
+        if trace_recorder is None:
+            return "{}"
+        return trace_recorder.summarize_json(
+            limit_recent=limit_recent,
+            min_sequence_count=min_sequence_count,
+            reset=reset,
+        )
+
+    registered = {
         "browser_open": browser_open,
         "browser_navigate": browser_navigate,
         "browser_read_text": browser_read_text,
@@ -425,4 +443,8 @@ def register_wrapper_tools(
         "browser_wait": browser_wait,
         "browser_get_cookies": browser_get_cookies,
         "browser_download_url": browser_download_url,
+        "browser_trace_summary": browser_trace_summary,
     }
+    if trace_recorder is not None:
+        return trace_recorder.wrap_registered_tools(mcp, registered)
+    return registered

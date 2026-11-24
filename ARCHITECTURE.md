@@ -70,6 +70,7 @@ sequenceDiagram
 | [`tab_routing_service.py`](src/stealth_wrapper/tab_routing_service.py) | Monotonic per-session tab IDs, pinned active tabs, and async `ContextVar` tab scopes. | Keeps closed indices tombstone-stable so active tab IDs never shift unexpectedly. |
 | [`session_fork_service.py`](src/stealth_wrapper/session_fork_service.py) & [`forked_session.py`](src/stealth_wrapper/forked_session.py) | `storage_state` context cloning, shared host browser management, promote/discard workflows. | Each fork uses an independent `asyncio.Lock` with zero contention on `main`. |
 | [`tool_trace_recorder.py`](src/stealth_wrapper/tool_trace_recorder.py) | Per-call JSONL telemetry, 2/3-step sequence n-gram aggregation, and streamlining opportunity detection. | Redacts sensitive arguments, bounds ring-buffer memory, and exposes `browser_trace_summary` + `GET /traces`. |
+| [`credential_access_service.py`](src/stealth_wrapper/credential_access_service.py) & [`mcp_prompts.py`](src/stealth_wrapper/mcp_prompts.py) | Human-gated Vaultwarden Agent Access (`aac` + ntfy) credential injection, built-in MCP prompts, resources, and server instructions. | Injects username/password/TOTP via real keyboard events without returning secrets to the LLM or trace logs. |
 
 ---
 

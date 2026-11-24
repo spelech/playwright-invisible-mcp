@@ -14,7 +14,13 @@ from invisible_playwright_mcp.mcp import server as upstream_server
 from starlette.responses import JSONResponse
 
 from .browser_action_service import BrowserActionService
+from .credential_access_service import (
+    DEFAULT_AAC_PROXY_URL,
+    DEFAULT_AAC_TIMEOUT_S,
+    CredentialAccessService,
+)
 from .dom_stability_settler import DomStabilitySettler
+from .mcp_prompts import register_wrapper_prompts
 from .page_download_service import PageDownloadService
 from .profile_lifecycle_guard import ProfileLifecycleGuard
 from .session_fork_service import SessionForkService
@@ -32,6 +38,7 @@ class WrapperRuntime:
     action_service: BrowserActionService
     fork_service: SessionForkService
     trace_recorder: ToolTraceRecorder
+    credential_service: CredentialAccessService
     tools: dict[str, Callable[..., Any]]
     app: Any
     healthz: Callable[..., Any]
@@ -39,15 +46,25 @@ class WrapperRuntime:
     _mcp: Any
     _orig_tools: dict[str, Any]
     _orig_stateless_http: Any
+    _orig_instructions: Any
+    _orig_prompts: dict[str, Any]
+    _orig_resources: dict[str, Any]
 
     def restore(self) -> None:
-        """Restore mutated upstream FastMCP tools and action/work hooks (used by test fixtures)."""
+        """Restore mutated upstream FastMCP tools, prompts, resources, and action/work hooks."""
         self.fork_service.restore()
         self.action_service.restore()
         self.dom_settler.restore(_actions)
         self.lifecycle_guard.restore()
         self._mcp._tool_manager._tools.clear()
         self._mcp._tool_manager._tools.update(self._orig_tools)
+        if hasattr(self._mcp, "_prompt_manager"):
+            self._mcp._prompt_manager._prompts.clear()
+            self._mcp._prompt_manager._prompts.update(self._orig_prompts)
+        if hasattr(self._mcp, "_resource_manager"):
+            self._mcp._resource_manager._resources.clear()
+            self._mcp._resource_manager._resources.update(self._orig_resources)
+        self._mcp._mcp_server.instructions = self._orig_instructions
         self._mcp.settings.stateless_http = self._orig_stateless_http
 
 
@@ -80,11 +97,25 @@ def build_wrapper_runtime(
         "false",
         "no",
     )
+    aac_enabled = os.environ.get("STEALTHFOX_AAC_ENABLED", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+    )
+    aac_bin = os.environ.get("STEALTHFOX_AAC_BIN", "aac").strip() or "aac"
+    aac_proxy_url = os.environ.get("STEALTHFOX_AAC_PROXY_URL", DEFAULT_AAC_PROXY_URL).strip()
+    aac_home_raw = os.environ.get("STEALTHFOX_AAC_HOME", "/data/aac").strip()
+    aac_home = Path(aac_home_raw) if aac_home_raw else None
+    aac_session = os.environ.get("STEALTHFOX_AAC_SESSION")
+    aac_token = os.environ.get("STEALTHFOX_AAC_TOKEN")
+    aac_timeout_s = int(os.environ.get("STEALTHFOX_AAC_TIMEOUT_S", str(DEFAULT_AAC_TIMEOUT_S)))
 
     orig_tools = {
         name: tool_obj.model_copy(deep=True) if hasattr(tool_obj, "model_copy") else tool_obj
         for name, tool_obj in mcp._tool_manager._tools.items()
     }
+    orig_prompts = dict(getattr(getattr(mcp, "_prompt_manager", None), "_prompts", {}))
+    orig_resources = dict(getattr(getattr(mcp, "_resource_manager", None), "_resources", {}))
     orig_stateless_http = mcp.settings.stateless_http
 
     lifecycle_guard = ProfileLifecycleGuard(work, default_profile_dir=default_profile_dir)
@@ -119,6 +150,19 @@ def build_wrapper_runtime(
         log_events=trace_log,
     )
 
+    credential_service = CredentialAccessService(
+        actions_module=_actions,
+        enabled=aac_enabled,
+        aac_bin=aac_bin,
+        proxy_url=aac_proxy_url,
+        aac_home=aac_home,
+        session_id=aac_session,
+        bootstrap_token=aac_token,
+        timeout_seconds=aac_timeout_s,
+    )
+
+    prompt_state = register_wrapper_prompts(mcp)
+
     tools = register_wrapper_tools(
         mcp=mcp,
         work=work,
@@ -126,6 +170,7 @@ def build_wrapper_runtime(
         action_service=action_service,
         fork_service=fork_service,
         trace_recorder=trace_recorder,
+        credential_service=credential_service,
     )
 
     if hasattr(mcp.settings, "transport_security") and mcp.settings.transport_security:
@@ -145,6 +190,8 @@ def build_wrapper_runtime(
                 "headless": os.environ.get("STEALTHFOX_HEADLESS", "1"),
                 "traceEnabled": trace_recorder.enabled,
                 "tracedCalls": trace_recorder._total_calls,
+                "aacEnabled": credential_service.enabled,
+                "aacAvailable": bool(credential_service.resolve_binary()),
             }
         )
 
@@ -171,6 +218,7 @@ def build_wrapper_runtime(
         action_service=action_service,
         fork_service=fork_service,
         trace_recorder=trace_recorder,
+        credential_service=credential_service,
         tools=tools,
         app=app,
         healthz=healthz,
@@ -178,6 +226,9 @@ def build_wrapper_runtime(
         _mcp=mcp,
         _orig_tools=orig_tools,
         _orig_stateless_http=orig_stateless_http,
+        _orig_instructions=prompt_state["orig_instructions"],
+        _orig_prompts=orig_prompts,
+        _orig_resources=orig_resources,
     )
 
 

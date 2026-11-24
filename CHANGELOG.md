@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.76.0](https://github.com/spelech/playwright-invisible-mcp/compare/v0.75.0...v0.76.0) (2026-11-24)
+
+
+### Features
+
+* **aac:** add Vaultwarden Agent Access login pathway and built-in MCP prompts ([#5](https://github.com/spelech/playwright-invisible-mcp/issues/5)) ([53a7e93](https://github.com/spelech/playwright-invisible-mcp/commit/53a7e93ef8b1a439c97de09adff600bc95fff9f3))
+
 ## [0.75.0](https://github.com/spelech/playwright-invisible-mcp/compare/v0.74.0...v0.75.0) (2026-11-17)
 
 

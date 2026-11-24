@@ -96,7 +96,7 @@ async def test_wrapper_registers_mcp_prompts_resources_and_instructions(
         )
         rendered_login = " ".join(str(m.content) for m in login_prompt.messages)
         assert "browser_fill_credentials" in rendered_login
-        assert "github.com" in rendered_login
+        assert 'domain="github.com"' in rendered_login
 
         totp_prompt = await upstream_server.mcp.get_prompt(
             "multi_step_2fa_login",
@@ -222,7 +222,10 @@ async def test_credential_access_injects_secrets_without_leaking_to_llm(
     assert session.page().field_values["#password"] == secret_pw
     assert session.page().field_values["#otp-code"] == secret_totp
     assert actions_double.clicked == ["#sign-in-btn"]
-    assert any("--domain" in cmd and "example.com" in cmd for cmd in seen_cmds)
+    assert any(
+        "--domain" in cmd and cmd[cmd.index("--domain") + 1] == "example.com"
+        for cmd in seen_cmds
+    )
 
 
 @pytest.mark.requirement(

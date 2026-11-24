@@ -122,6 +122,7 @@ def register_wrapper_tools(
     action_service: Any,
     fork_service: Any,
     trace_recorder: Optional[Any] = None,
+    credential_service: Optional[Any] = None,
 ) -> dict[str, Callable[..., Any]]:
     """Adapt upstream FastMCP tools and register all wrapper-enhanced and new browser tools."""
     for session_tool in SESSION_ADAPTED_TOOLS:
@@ -400,10 +401,49 @@ def register_wrapper_tools(
     ) -> str:
         """Download a URL through the active authenticated Firefox context and save it to disk."""
         with fork_service.tab_scope(tab_id):
-            return await work.reading(
-                action_service.download_url,
-                url=url,
-                filename=filename,
+            return await work.reading(action_service.download_url, url=url, filename=filename, role=browser)
+
+    @mcp.tool(
+        annotations=_says("Inspect Agent Access Control (aac) readiness and login form fields", read_only=True)
+    )
+    async def browser_aac_status(browser: FlexibleBrowser = None, tab_id: TabIdParam = None) -> str:
+        """Check Vaultwarden `aac` readiness, cached sessions, and detected login fields on the active page."""
+        if credential_service is None:
+            return '{"enabled": false, "guidance": "Credential service not configured."}'
+        session = (getattr(work, "_open", None) or {}).get(browser or DEFAULT_BROWSER_ID)
+        with fork_service.tab_scope(tab_id):
+            return await credential_service.check_status(session=session)
+
+    @mcp.tool(
+        annotations=_says("Fill login or 2FA fields via human-approved Vaultwarden Agent Access", destructive=True)
+    )
+    async def browser_fill_credentials(
+        domain: Optional[str] = None,
+        item_id: Optional[str] = None,
+        username_selector: Optional[str] = None,
+        password_selector: Optional[str] = None,
+        totp_selector: Optional[str] = None,
+        submit_selector: Optional[str] = None,
+        fill_username: bool = True,
+        fill_password: bool = True,
+        fill_totp: bool = False,
+        submit: bool = False,
+        press_enter: bool = False,
+        timeout_seconds: Optional[int] = None,
+        browser: FlexibleBrowser = None,
+        tab_id: TabIdParam = None,
+    ) -> str:
+        """Request human-approved credentials via `aac` (ntfy push) and type them directly into the page without exposing secrets."""
+        if credential_service is None:
+            return '{"status": "disabled", "message": "Credential service not configured."}'
+        with fork_service.tab_scope(tab_id):
+            return await work.acting(
+                credential_service.fill_credentials,
+                domain=domain, item_id=item_id,
+                username_selector=username_selector, password_selector=password_selector,
+                totp_selector=totp_selector, submit_selector=submit_selector,
+                fill_username=fill_username, fill_password=fill_password, fill_totp=fill_totp,
+                submit=submit, press_enter=press_enter, timeout_seconds=timeout_seconds,
                 role=browser,
             )
 
@@ -443,6 +483,8 @@ def register_wrapper_tools(
         "browser_wait": browser_wait,
         "browser_get_cookies": browser_get_cookies,
         "browser_download_url": browser_download_url,
+        "browser_aac_status": browser_aac_status,
+        "browser_fill_credentials": browser_fill_credentials,
         "browser_trace_summary": browser_trace_summary,
     }
     if trace_recorder is not None:

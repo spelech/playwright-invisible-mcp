@@ -137,6 +137,51 @@ class ForkDiscardResponse(BaseModel):
     openBrowsers: list[str] = Field(default_factory=list)
 
 
+class LoginFormFields(BaseModel):
+    """Detected interactive selectors for a login or 2FA form on the active page."""
+
+    usernameSelector: Optional[str] = None
+    passwordSelector: Optional[str] = None
+    totpSelector: Optional[str] = None
+    submitSelector: Optional[str] = None
+
+
+class AacStatusResponse(BaseModel):
+    """Structured readiness report returned by `browser_aac_status`."""
+
+    enabled: bool
+    binaryAvailable: bool
+    binaryPath: Optional[str] = None
+    proxyUrl: str
+    homeDir: Optional[str] = None
+    paired: bool = False
+    sessions: list[str] = Field(default_factory=list)
+    hasBootstrapToken: bool = False
+    currentUrl: Optional[str] = None
+    detectedDomain: Optional[str] = None
+    detectedFields: Optional[LoginFormFields] = None
+    guidance: str = ""
+
+
+class CredentialFillResponse(BaseModel):
+    """Zero-secret structured response returned by `browser_fill_credentials`."""
+
+    status: str
+    domain: str = ""
+    itemId: Optional[str] = None
+    usernameFilled: bool = False
+    passwordFilled: bool = False
+    totpFilled: bool = False
+    submitted: bool = False
+    usedSelectors: dict[str, str] = Field(default_factory=dict)
+    availableFields: list[str] = Field(default_factory=list)
+    urlBefore: str = ""
+    urlAfter: str = ""
+    urlChanged: bool = False
+    elapsedMs: float = 0.0
+    message: str = ""
+
+
 def slice_bounded_text(content: str, *, max_chars: int, offset: int) -> str:
     """Slice `content` using non-negative `offset` and optional `max_chars` (`<= 0` unlimited)."""
     total_len = len(content)

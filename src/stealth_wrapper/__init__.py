@@ -1,16 +1,21 @@
 """Stealth browser wrapper modules for invisible-playwright-mcp."""
 
 from .browser_action_service import BrowserActionService
+from .credential_access_service import CredentialAccessService
 from .dom_stability_settler import DomStabilitySettler
+from .mcp_prompts import register_wrapper_prompts
 from .models import (
     DEFAULT_READ_HTML_MAX_CHARS,
     DEFAULT_READ_TEXT_MAX_CHARS,
+    AacStatusResponse,
     CookieRecord,
     CookieSnapshotResponse,
+    CredentialFillResponse,
     DownloadResultResponse,
     ForkCreateResponse,
     ForkDiscardResponse,
     ForkPromoteResponse,
+    LoginFormFields,
     PasteResultResponse,
     ScrollResultResponse,
     TabActionResponse,
@@ -33,9 +38,12 @@ from .tool_trace_recorder import (
 )
 
 __all__ = [
+    "AacStatusResponse",
     "BrowserActionService",
     "CookieRecord",
     "CookieSnapshotResponse",
+    "CredentialAccessService",
+    "CredentialFillResponse",
     "DEFAULT_READ_HTML_MAX_CHARS",
     "DEFAULT_READ_TEXT_MAX_CHARS",
     "DomStabilitySettler",
@@ -44,6 +52,7 @@ __all__ = [
     "ForkDiscardResponse",
     "ForkedStealthSession",
     "ForkPromoteResponse",
+    "LoginFormFields",
     "PageDownloadService",
     "PasteResultResponse",
     "ProfileLifecycleGuard",
@@ -62,4 +71,5 @@ __all__ = [
     "WrapperRuntime",
     "build_wrapper_runtime",
     "main",
+    "register_wrapper_prompts",
 ]

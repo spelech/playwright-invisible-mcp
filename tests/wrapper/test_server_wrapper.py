@@ -14,7 +14,7 @@ from stealth_wrapper.server import build_wrapper_runtime
 
 
 @pytest.mark.requirement(
-    "MCP-05", "FastMCP server_wrapper registers all 30 tools and dispatches through domain services"
+    "MCP-05", "FastMCP server_wrapper registers all 32 tools and dispatches through domain services"
 )
 async def test_server_wrapper_tool_registration_and_dispatch(
     tmp_path: Path,
@@ -70,6 +70,8 @@ async def test_server_wrapper_tool_registration_and_dispatch(
             "browser_fork_session",
             "browser_promote_fork",
             "browser_discard_fork",
+            "browser_aac_status",
+            "browser_fill_credentials",
             "browser_trace_summary",
         }
         assert expected_tools.issubset(set(tool_map))

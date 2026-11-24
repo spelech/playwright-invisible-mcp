@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger("stealth_wrapper.trace")
 
-SENSITIVE_ARG_MARKERS = ("key", "token", "secret", "password", "cookie", "auth")
+SENSITIVE_ARG_MARKERS = ("key", "token", "secret", "password", "cookie", "auth", "totp", "otp")
 READ_TOOLS = ("browser_snapshot", "browser_read_text", "browser_read_html", "browser_evaluate")
 ACTION_TOOLS = (
     "browser_navigate",

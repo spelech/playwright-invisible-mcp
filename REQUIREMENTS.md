@@ -36,8 +36,11 @@ Requirement identifiers use `<CATEGORY>-<NN>` format (`GUARD`, `MCP`, `SEC`, `TR
 | **`MCP-08`** | `MCP` | `PositiveFeature` | **Multi-Tab Pinning & `ContextVar` Scoping** | [`test_tab_and_fork_services.py::test_tab_routing_pinned_and_scoped_navigation`](tests/wrapper/test_tab_and_fork_services.py) |
 | **`MCP-09`** | `MCP` | `PositiveFeature` | **Parallel `storage_state` Context Forks** | [`test_tab_and_fork_services.py::test_fork_session_parallel_isolation_and_checkpoint_rollback`](tests/wrapper/test_tab_and_fork_services.py) |
 | **`MCP-10`** | `MCP` | `PositiveFeature` | **Tool Call Tracing & Streamlining Analytics** | [`test_tool_trace_recorder.py::test_tool_trace_recorder_patterns_streamlining_and_endpoints`](tests/wrapper/test_tool_trace_recorder.py) |
+| **`MCP-11`** | `MCP` | `PositiveFeature` | **Agent-Accessible MCP Prompts, Resources & Instructions** | [`test_credential_access_service.py::test_wrapper_registers_mcp_prompts_resources_and_instructions`](tests/wrapper/test_credential_access_service.py) |
+| **`MCP-12`** | `MCP` | `PositiveFeature` | **Human-Gated Vaultwarden (`aac`) Login Injection** | [`test_credential_access_service.py::test_credential_access_injects_secrets_without_leaking_to_llm`](tests/wrapper/test_credential_access_service.py) |
 | **`SEC-01`** | `SEC` | `FailClosedGuardrail` | **Read-Only JavaScript Evaluation Guardrail** | [`test_browser_action_service.py::test_evaluate_enforces_stealth_guardrails_and_runs_expressions`](tests/wrapper/test_browser_action_service.py) |
 | **`SEC-02`** | `SEC` | `FailClosedGuardrail` | **Reject Auto-Launch for Unknown Fork IDs** | [`test_tab_and_fork_services.py::test_lifecycle_guard_skips_auto_open_for_unknown_forks`](tests/wrapper/test_tab_and_fork_services.py) |
+| **`SEC-03`** | `SEC` | `FailClosedGuardrail` | **Zero-Secret-Leakage Credential Error & Trace Isolation** | [`test_credential_access_service.py::test_credential_access_error_paths_and_zero_secret_traces`](tests/wrapper/test_credential_access_service.py) |
 
 ---
 
